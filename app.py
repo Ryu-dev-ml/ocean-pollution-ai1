@@ -7,18 +7,6 @@ import pandas as pd
 # ---------------- CONFIG ----------------
 st.set_page_config(page_title="Ocean Pollution AI", layout="wide")
 
-# ---------------- STYLE ----------------
-st.markdown("""
-<style>
-.stApp {
-    background-color: #f8fafc;
-}
-h1, h2, h3 {
-    color: #0f172a;
-}
-</style>
-""", unsafe_allow_html=True)
-
 # ---------------- LOAD MODEL ----------------
 @st.cache_resource
 def load_model():
@@ -28,7 +16,7 @@ model = load_model()
 
 # ---------------- TITLE ----------------
 st.title("🌊 Ocean Pollution Detection System")
-st.markdown("AI-powered analysis using YOLOv8")
+st.caption("AI-powered analysis using YOLOv8")
 
 # ---------------- SIDEBAR ----------------
 st.sidebar.header("⚙️ Settings")
@@ -45,68 +33,68 @@ if uploaded_file:
     results = model.predict(image_np, conf=confidence)
     annotated = results[0].plot()
 
-    # ---------------- LAYOUT ----------------
+    # ---------------- IMAGE DISPLAY ----------------
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("📷 Original Image")
+        st.subheader("📷 Input Image")
         st.image(image, use_container_width=True)
 
     with col2:
         st.subheader("🧠 Detection Output")
         st.image(annotated, use_container_width=True)
 
-    # ---------------- RESULT ----------------
-    boxes = results[0].boxes
+    # ---------------- ANALYSIS ----------------
+    st.divider()
+    st.subheader("📊 Analysis")
 
-    st.markdown("---")
-    st.subheader("📊 Analysis Dashboard")
+    boxes = results[0].boxes
 
     if boxes is None or len(boxes) == 0:
         st.success("✅ Clean Water Detected")
     else:
         st.error("❌ Pollution Detected")
 
-        # Score
         score = min(100, len(boxes) * 20)
 
-        # ---------------- METRICS ----------------
-        m1, m2 = st.columns(2)
+        # Metrics
+        col3, col4, col5 = st.columns(3)
 
-        with m1:
+        with col3:
             st.metric("Pollution Score", f"{score}/100")
 
-        with m2:
+        with col4:
             st.metric("Objects Detected", len(boxes))
 
-        # ---------------- CLASS ANALYSIS ----------------
+        with col5:
+            st.metric("Severity", "High" if score > 60 else "Moderate")
+
+        # Class analysis
         classes = boxes.cls.cpu().numpy()
         names = model.names
 
         class_names = [names[int(c)] for c in classes]
 
         df = pd.DataFrame(class_names, columns=["Type"])
-
         count_df = df["Type"].value_counts().reset_index()
         count_df.columns = ["Pollution Type", "Count"]
 
-        # ---------------- TABLE + CHART ----------------
-        col3, col4 = st.columns(2)
+        col6, col7 = st.columns(2)
 
-        with col3:
-            st.write("### 🧾 Detection Table")
-            st.dataframe(count_df)
+        with col6:
+            st.subheader("🧾 Detection Table")
+            st.dataframe(count_df, use_container_width=True)
 
-        with col4:
-            st.write("### 📈 Distribution")
+        with col7:
+            st.subheader("📈 Distribution")
             st.bar_chart(count_df.set_index("Pollution Type"))
 
-        # ---------------- REPORT ----------------
-        st.markdown("### 📄 AI Report")
+        # Report
+        st.subheader("📄 AI Report")
         st.info(f"""
-        The system detected {len(boxes)} polluted regions in the water body.
+        The system detected **{len(boxes)} polluted regions**.
 
-        Pollution score is **{score}/100**, indicating {'HIGH' if score > 60 else 'MODERATE'} pollution level.
+        Pollution score: **{score}/100** → {'HIGH' if score > 60 else 'MODERATE'} level.
 
-        Major detected types: {", ".join(set(class_names))}
+        Detected types: {", ".join(set(class_names))}
         """)
